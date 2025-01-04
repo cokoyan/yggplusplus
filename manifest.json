@@ -1,7 +1,7 @@
 {
-  "name": "YGG Plus",
-  "version": "1.13",
-  "description": "Add downloads buttons to ygg torrent",
+  "name": "YGG Plus Plus",
+  "version": "1.0",
+  "description": "Add downloads buttons and rating to ygg torrent",
   "icons": {
     "128": "128.png"
   },
