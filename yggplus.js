@@ -1,4 +1,4 @@
-const apiKey = 'xxxxxxxx';  // OMDB API KEY
+const apiKey = 'c7f2ad23';  // OMDB API KEY
 
 const CACHE_EXPIRY = 7 * 24 * 60 * 60 * 1000; // 7 jours
 
@@ -117,7 +117,7 @@ function addActionDownload() {
 
         // Ajoute un lien de téléchargement dans la nouvelle cellule
         td.innerHTML = '<svg viewBox="0 0 32 32" width="30px" height="20px">' +
-						  '<a xlink:href="https://www.ygg.re/engine/download_torrent?id=' + id + '">' +
+						  '<a xlink:href="https://www.yggtorrent.top/engine/download_torrent?id=' + id + '">' +
 							  '<rect width="32" height="32" rx="4" fill="#2563eb"/>' +
 							  '<path d="M16 8 L16 20 M11 15 L16 20 L21 15 M10 24 L22 24" stroke="white" stroke-width="2" fill="none" stroke-linecap="round"/>' +
 						  '</a>'+
