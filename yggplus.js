@@ -3,11 +3,32 @@ const apiKey = 'c7f2ad23';  // OMDB API KEY
 const CACHE_EXPIRY = 7 * 24 * 60 * 60 * 1000; // 7 jours
 
 // Un objet de cache pour stocker les notes des films
-const movieCache = JSON.parse(localStorage.getItem('movieCache')) || {};
+let movieCache = {};
 
-for (let key in movieCache) {
-  if (isCacheExpired(movieCache[key].timestamp)) {
-    delete movieCache[key];
+// Fonction pour charger le cache depuis chrome.storage
+async function loadCache() {
+  try {
+    const result = await chrome.storage.local.get(['movieCache']);
+    movieCache = result.movieCache || {};
+    
+    // Nettoie les entrées expirées
+    for (let key in movieCache) {
+      if (isCacheExpired(movieCache[key].timestamp)) {
+        delete movieCache[key];
+      }
+    }
+  } catch (error) {
+    console.error('Erreur lors du chargement du cache:', error);
+    movieCache = {};
+  }
+}
+
+// Fonction pour sauvegarder le cache
+async function saveCache() {
+  try {
+    await chrome.storage.local.set({ movieCache: movieCache });
+  } catch (error) {
+    console.error('Erreur lors de la sauvegarde du cache:', error);
   }
 }
 
@@ -28,10 +49,6 @@ function injectCSS() {
 
 function isCacheExpired(timestamp) {
   return Date.now() - timestamp > CACHE_EXPIRY;
-}
-
-function saveCache() {
-  localStorage.setItem('movieCache', JSON.stringify(movieCache));
 }
 
 function calculateColor(rating) {
@@ -122,9 +139,6 @@ function addActionDownload() {
 							  '<path d="M16 8 L16 20 M11 15 L16 20 L21 15 M10 24 L22 24" stroke="white" stroke-width="2" fill="none" stroke-linecap="round"/>' +
 						  '</a>'+
 						'</svg>';
-          //'<a href="https://www.ygg.re/engine/download_torrent?id=' +
-          //id +
-          //'">Télécharger</a>';
         
         // Ajoute la cellule à la fin de la ligne
         row.appendChild(td);
@@ -135,17 +149,20 @@ function addActionDownload() {
 
 function applyRating(td) {
 	const imdbRating = parseFloat(td.innerHTML) || 0; // Note IMDb
-			const color = calculateColor(imdbRating); // Couleur basée sur la note
-			
-			// Met à jour la cellule
-			if (imdbRating != 0) {
-				td.innerHTML = `${imdbRating} / 10`; // Affiche la note
-				td.style.background = color; // Applique la couleur en fond
-			}
+	const color = calculateColor(imdbRating); // Couleur basée sur la note
+	
+	// Met à jour la cellule
+	if (imdbRating != 0) {
+		td.innerHTML = `${imdbRating} / 10`; // Affiche la note
+		td.style.background = color; // Applique la couleur en fond
+	}
 }
 
 // Fonction qui vérifie et modifie les tableaux de données sur la page
-function addEvaluation() {
+async function addEvaluation() {
+  // Assure-toi que le cache est chargé
+  await loadCache();
+  
   // Sélectionne tous les éléments <table> ayant la classe "table"
   const tables = document.querySelectorAll("table.table");
 
@@ -159,10 +176,8 @@ function addEvaluation() {
   } 
   // Si des tableaux avec des données sont trouvés
   else {
-
     // Pour chaque tableau trouvé
     tables.forEach((table) => {
-
       // Pour chaque ligne du corps du tableau
       for (let row of table.tBodies[0].rows) {
 		  
@@ -198,7 +213,7 @@ function addEvaluation() {
 			} else {
 				// Si les informations ne sont pas dans le cache, faire une requête à l'API
 				// Requête OMDB API pour récupérer la note
-				urlToFecth = `https://www.omdbapi.com/?apikey=${apiKey}&t=${encodeURIComponent(movieInfos.title)}`;
+				let urlToFecth = `https://www.omdbapi.com/?apikey=${apiKey}&t=${encodeURIComponent(movieInfos.title)}`;
 				
 				if (movieInfos.year != null) {
 					urlToFecth += '&y=' + movieInfos.year;
@@ -206,7 +221,7 @@ function addEvaluation() {
 				
 				fetch(urlToFecth)
 				  .then(response => response.json())
-				  .then(data => {
+				  .then(async data => {
 					if (data.Response === 'True') {
 					  console.log('Titre :', data.Title);
 					  console.log('Année :', data.Year);
@@ -214,23 +229,23 @@ function addEvaluation() {
 					  console.log('Note Rotten Tomatoes :', data.Ratings ? data.Ratings.find(rating => rating.Source === 'Rotten Tomatoes')?.Value : 'Non disponible');
 					  
 					  // Enregistre les données dans le cache
-						const cachedData = {
-						  imdbRating: data.imdbRating || 'Non disponible'
-						};
-						
-						movieCache[movieKey] = cachedData; // Enregistre dans le cache
-						saveCache(); // Sauvegarde dans le localStorage
+					  const cachedData = {
+						imdbRating: data.imdbRating || 'Non disponible',
+						timestamp: Date.now()
+					  };
+					  
+					  movieCache[movieKey] = cachedData; // Enregistre dans le cache
+					  await saveCache(); // Sauvegarde dans chrome.storage
 
-						// Met à jour la cellule avec la note
-						td.innerHTML = cachedData.imdbRating;
-						
-						applyRating(td);
+					  // Met à jour la cellule avec la note
+					  td.innerHTML = cachedData.imdbRating;
+					  
+					  applyRating(td);
 					} else {
 					  console.error('Film non trouvé');
 					}
 				  }).catch(error => console.error('Erreur :', error));
 			}
-			
 		} 
         
         // Ajoute la cellule à la fin de la ligne
@@ -246,11 +261,17 @@ function addEvaluation() {
   }
 }
 
-// Injecte d'abord le CSS
-injectCSS();
+// Fonction d'initialisation
+async function init() {
+  // Injecte d'abord le CSS
+  injectCSS();
 
-// Lance la fonction d'ajout du lien dl
-addActionDownload();
+  // Lance la fonction d'ajout du lien dl
+  addActionDownload();
 
-// Lance la fonction d'ajout de la note
-addEvaluation();
+  // Lance la fonction d'ajout de la note (avec chargement du cache)
+  await addEvaluation();
+}
+
+// Démarre l'extension
+init();

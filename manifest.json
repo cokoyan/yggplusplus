@@ -1,10 +1,14 @@
 {
   "name": "YGG Plus Plus",
-  "version": "1.0",
+  "version": "1.1",
   "description": "Add downloads buttons and rating to ygg torrent",
+  "manifest_version": 3,
   "icons": {
     "128": "128.png"
   },
+  "permissions": [
+    "storage"
+  ],
   "content_scripts": [
     {
       "all_frames": true,
@@ -17,6 +21,5 @@
         "https://www6.yggtorrent.top/*"
       ]
     }
-  ],
-  "manifest_version": 2
+  ]
 }
